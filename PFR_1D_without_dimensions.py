@@ -1,5 +1,5 @@
 """
-In this function, called PFR_1D.py,
+In this function, called PFR_1D_without_dimensions.py,
 the concentration and temperature profile of the 1D Plug Flow Reactor 
 are solved and coupled.
 The system consist of convection, diffusion and reaction.
@@ -27,49 +27,49 @@ def main():
     """
     # Reactor variables
     L_reactor = 1.0     	 # Length of reactor (m)
-    velocity_inlet = 0.333   # Velocity of the entering reactant gas mixture (m/s)
     R_cycl = 1.0            # Radius of the reactor (m)
+    velocity_inlet = 0.333   # Velocity of the entering reactant gas mixture (m3/s)
     
     # Variables for concentration profile
     c_A_in = 1.0            # Inlet feed concentration of A (mol/m3)
     c_B_in = 1.0            # Inlet feed concentration of B (mol/m3)
-    c_C_in = 0.00000001     # Inlet feed concentration of C (mol/m3)
-    c_N_in = 0.00000001     # Inlet feed concentration of N (mol/m3)
-    
+    c_C_in = 0.0000001      # Inlet feed concentration of C (mol/m3)
+    c_N_in = 0.0000001      # Inlet feed concentration of N (mol/m3)
+
     D_f_A = 0.033           # Diffusion coefficient of reactant A in gas (m2/s)
-    D_f_B = 0.033           # Diffusion coefficient of reactant B in gas (m2/s)
-    D_f_C = 0.033           # Diffusion coefficient of reactant C in gas (m2/s)
+    D_f_B = 0.033           # Diffusion coefficient of reactant B in gas (m2/s) 
+    D_f_C = 0.033           # Diffusion coefficient of reactant C in gas (m2/s) 
     D_f_N = 0.033           # Diffusion coefficient of reactant N in gas (m2/s)
-    
+
     # Variables for temperature profile
     rho_A = 1.0             # Density of the reactant A (kg/m3)
     rho_B = 1.0             # Density of the reactant B (kg/m3)
     rho_C = 1.0             # Density of the reactant C (kg/m3)
     rho_N = 1.0             # Density of the reactant N (kg/m3)
-    
+
     Cp_A = 1.0              # Specific heat capacity of the reactant A (Joule/(Kg.K))
     Cp_B = 1.0              # Specific heat capacity of the reactant B (Joule/(Kg.K))
     Cp_C = 1.0              # Specific heat capacity of the reactant C (Joule/(Kg.K))
-    Cp_N = 1.0              # Specific heat capacity of the reactant C (Joule/(Kg.K))
-    
-    T_in = 300.0            # Inlet temperature (K)
+    Cp_N = 1.0              # Specific heat capacity of the reactant N (Joule/(Kg.K))
+
+    T_in = 1.0              # Inlet temperature (K)
     
     k_f = 0.033             # Thermal conductivity of gas mixture (Watt/(m.K))
     
-    T_wall = 300.0          # Temperature of the reactor wall (K)
+    T_wall = 1.0            # Temperature of the reactor wall (K)
+    R_cycl = 1.0            # Radius of the reactor (m)
     U = 0.0005              # Heat transfer coefficient (W/(m*K))
     a = 2/R_cycl
 
     # Kinetic parameters
     delta_H = -1.0          # Reaction ethalpy (J/mol)
-    Ea = 9e4                # Activation energy (J/mol)
+    Ea = 100.0              # Activation energy (J)
     R = 8.314               # Gas constant (J/(K*mol))
-    k0 = 1.08e16            # Arrhenius pre-factor (1/s)
     
-    # Combining the variables
+    # Combining the input variables
     ingoing = [c_A_in, c_B_in, c_C_in, c_N_in, T_in]
-    rho = [rho_A, rho_B, rho_C, rho_N]  
-    Cp = [Cp_A, Cp_B, Cp_C, Cp_N]
+    rho = [rho_A, rho_B, rho_C, rho_N]
+    Cp = [Cp_A, Cp_B, Cp_C, Cp_N]    
     D_f = [D_f_A, D_f_B, D_f_C, D_f_N]
     
     # Computational stencil parameters
@@ -77,15 +77,27 @@ def main():
     delta_x = 1e-2          # Grid size for reactor transport (m)
     
     """
-    2. Discretization of space and determination of the total time duration
+    2. Defining the empirical values required to evaluate the reactor performance
+    Remark: only the Peclet number is different for both concentrations, since the 
+    Damkohler number depends on the reaction rate constant which is the same for both
+    components. However, the Peclet number depends on the diffusion coefficient of 
+    the reactant which can be different for the reactants. Also the Peclet
+    number for temperature is different since this depends on the thermal
+    conductivity of the gas mixture instead of the diffusion coefficient.
     """
-    time = 0.0001               # Total time duration
+    # Damkohler number
+    Da = 0.1
+
+    """
+    3. Discretization of space and determination of the total time duration
+    """
+    time = 0.5
     
-    spacesteps = int(L_reactor/delta_x)         # Number of steps in space
-    x = np.linspace(0,L_reactor,spacesteps+1)   # Vector with the steps in space
+    spacesteps = int(L_reactor/delta_x)
+    x = np.linspace(0,L_reactor,spacesteps+1)
     
     """
-    3. Calculating the numerical solution
+    4. Calculating the numerical solution
     """
     # Initial concentration profile (at t=0, only inert gas is present in the reactor)
     conc_A_current = np.zeros(spacesteps+1)
@@ -93,17 +105,16 @@ def main():
     conc_C_current = np.zeros(spacesteps+1)
     conc_N_current = np.ones(spacesteps+1)
     
-    # Initial temperature profile (at t=0, overall temperature in reactor is equal to T_wall)
-    T_current = np.ones(spacesteps+1)*T_wall
-   
+    # Initial temperature profile
+    T_current = np.ones(spacesteps+1)*T_in
     current_time = 0
     
     while current_time < time:
-        y, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current =  solver(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, rho, Cp, delta_H, k0, Ea, R, U, a, T_wall)
+        y, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current = solver(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, Da, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, rho, Cp, delta_H, Ea, R, U, a, T_wall)
         current_time = current_time + delta_t
         
     """
-    4. Calculating the molfractions of the reactants
+    5. Calculating the molfractions of the reactants
     """
     molfraction_A = conc_A_current / (conc_A_current + conc_B_current + conc_C_current + conc_N_current)
     molfraction_B = conc_B_current / (conc_A_current + conc_B_current + conc_C_current + conc_N_current) 
@@ -111,11 +122,11 @@ def main():
     molfraction_N = conc_N_current / (conc_A_current + conc_B_current + conc_C_current + conc_N_current)
     
     """
-    5. Plotting the numerical and analytical solution
+    6. Plotting the numerical and analytical solution
     """
     fig = plt.subplots(2,1)
     fig = plt.subplots_adjust(hspace=1.0)
-    plt.suptitle('PFR 1D Fluid Phase')
+    plt.suptitle('PFR 1D Fluid Phase without dimensions')
     # Concentration profile
     plt.subplot(2,1,1)
     plt.grid()
@@ -134,19 +145,19 @@ def main():
     plt.ylabel('Temperature [K]')
     plt.title('Temperature in the reactor')
     plt.legend(loc = 'center left', bbox_to_anchor = (1.0, 0.5))
-    
     """
-    6. Functions needed for solving the concentration profile numerical
+    7. Functions needed for solving the concentration profile numerical
     """
     
-def solver(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, rho, Cp, delta_H, k0, Ea, R, U, a, T_wall):
+def solver(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, Da, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, rho, Cp, delta_H, Ea, R, U, a, T_wall):
+
     # Generate matrices
     matrix_A = generate_matrix_concentration(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, 0)
     matrix_B = generate_matrix_concentration(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, 1)
     matrix_C = generate_matrix_concentration(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, 2)
     matrix_N = generate_matrix_concentration(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, 3)
     matrix_T, rho_Cp_T = generate_matrix_temperature(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, rho, Cp, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, 4)
-    
+
     # Generate right-hand side vector
     vector_A = np.copy(conc_A_current)
     vector_B = np.copy(conc_B_current)
@@ -156,13 +167,16 @@ def solver(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_curr
         
     # Process the reaction term within the right-hand side vector
     for i in range(1,spacesteps):
-            heat_transfer = - (U * a * (vector_T[i]-T_wall) * delta_t )/(rho_Cp_T[i])
-            reaction = (vector_A[i]*vector_B[i]*delta_t) * -(k0 * np.exp(-Ea/(R*vector_T[i])))
+            # Calculating current velocity
+            velocity_current, Pe = velocity(velocity_inlet, L_reactor, vector_A[i], vector_B[i], vector_C[i], vector_T[i], vector_N[i], ingoing, D_f, k_f)
+            heat_transfer = - U * a * (vector_T[i]-T_wall) * delta_t * (L_reactor/velocity_current)
+            k_temperature = np.exp(Ea/R*(1.0-(1.0/vector_T[i])))
+            reaction = - (Da*vector_A[i]*vector_B[i]*delta_t) * k_temperature
             vector_A[i] = vector_A[i] + reaction
             vector_B[i] = vector_B[i] + reaction
             vector_C[i] = vector_C[i] - reaction
-            vector_N[i] = vector_N[i]
-            vector_T[i] = vector_T[i] + (reaction*delta_H*(delta_t/(rho_Cp_T[i]))) + heat_transfer
+            vector_N[i] = vector_N[i] 
+            vector_T[i] = rho_Cp_T[i] * vector_T[i] + (reaction*delta_H) + heat_transfer
     # Implement the boundary condition within the right-hand side vector
     vector_A[0] = ingoing[0]
     vector_B[0] = ingoing[1]
@@ -189,17 +203,17 @@ def solver(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_curr
 def generate_matrix_concentration(L_reactor, velocity_inlet, spacesteps, delta_t, D_f, k_f, conc_A_current, conc_B_current, conc_C_current, conc_N_current, T_current, ingoing, situation):
     # Define step
     step = L_reactor/(spacesteps+1)
-
+    
     # Initialization of matrix
     matrix = np.zeros((spacesteps+1,spacesteps+1))
         
     # Loop over position
     for i in range(1,spacesteps):
-        # Calculating the current velocity
-        velocity_current = velocity(velocity_inlet, L_reactor, conc_A_current[i], conc_B_current[i], conc_C_current[i], conc_N_current[i], T_current[i], ingoing, D_f, k_f)
+        # Calculating the Peclet number
+        velocity_current, Pe = velocity(velocity_inlet, L_reactor, conc_A_current[i], conc_B_current[i], conc_C_current[i], conc_N_current[i], T_current[i], ingoing, D_f, k_f)
         # Combining the variables
-        alpha = -(delta_t*D_f[situation])/(step**2)
-        beta = (velocity_current*delta_t)/(2.0*step)
+        alpha = -(delta_t)/(Pe[situation]*step**2)
+        beta = (delta_t)/(2.0*step)
         # Generating the matrix
         matrix[i,i-1] = alpha - beta
         matrix[i,i+1] = alpha + beta
@@ -218,12 +232,12 @@ def generate_matrix_temperature(L_reactor, velocity_inlet, spacesteps, delta_t, 
     # Define step
     step = L_reactor/(spacesteps+1)
 
-    # Initialization of matrix
+    # Initialization of matrices
     matrix = np.zeros((spacesteps+1,spacesteps+1))
     rho_Cp_T = np.zeros(spacesteps)
-
+    
     # Loop over position
-    for i in range(1,spacesteps):
+    for i in range(0,spacesteps):
         molfraction = [0,0,0,0]
         # Determing average density and specific heat capacity depending on the molfraction of the reactant
         molfraction[0] = conc_A_current[i]/(conc_A_current[i] + conc_B_current[i] + conc_C_current[i] + conc_N_current[i])
@@ -231,15 +245,15 @@ def generate_matrix_temperature(L_reactor, velocity_inlet, spacesteps, delta_t, 
         molfraction[2] = conc_C_current[i]/(conc_A_current[i] + conc_B_current[i] + conc_C_current[i] + conc_N_current[i])
         molfraction[3] = conc_N_current[i]/(conc_A_current[i] + conc_B_current[i] + conc_C_current[i] + conc_N_current[i])
         rho_Cp_T[i] = ((molfraction[0]*rho[0]*Cp[0])+(molfraction[1]*rho[1]*Cp[1])+(molfraction[2]*rho[2]*Cp[2])+(molfraction[3]*rho[3]*Cp[3]))
-        # Calculating the current velocity
-        velocity_current = velocity(velocity_inlet, L_reactor, conc_A_current[i], conc_B_current[i], conc_C_current[i], conc_N_current[i], T_current[i], ingoing, D_f, k_f)
+        # Calculating the Peclet number
+        velocity_current, Pe = velocity(velocity_inlet, L_reactor, conc_A_current[i], conc_B_current[i], conc_C_current[i], conc_N_current[i], T_current[i], ingoing, D_f, k_f)
         # Combining the variables
-        alpha = -(delta_t * k_f)/(rho_Cp_T[i]*step**2)
-        beta = (velocity_current*delta_t)/(2.0*step) 
+        alpha = -(delta_t* rho_Cp_T[i])/(Pe[situation]*step**2)
+        beta = (delta_t* rho_Cp_T[i])/(2.0*step) 
         # Generating the matrix
         matrix[i,i-1] = alpha - beta
         matrix[i,i+1] = alpha + beta
-        matrix[i,i] = (1 - 2*alpha)
+        matrix[i,i] = (rho_Cp_T[i] - 2*alpha)
         
     # Boundary conditions
     matrix[0,0] = 1.0
@@ -249,16 +263,25 @@ def generate_matrix_temperature(L_reactor, velocity_inlet, spacesteps, delta_t, 
     matrix[spacesteps,spacesteps] = 11.0 / (6.0*step)
 
     return matrix, rho_Cp_T
- 
+
 def velocity(velocity_inlet, L_reactor, conc_A, conc_B, conc_C, conc_N, temp, ingoing, D_f, k_f):
     # Defining the variables that aren't used before
     pressure_ingoing = 1.0
-    pressure = pressure_ingoing
+    pressure = 1.0
     
     # Calculating the current velocity in the reactor
     velocity_current = velocity_inlet * (conc_A+conc_B+conc_C+conc_N)/(ingoing[0]+ingoing[1]+ingoing[2]+ingoing[3]) * (pressure_ingoing)/(pressure) * (temp)/(ingoing[4])
+
+    # Initialization for storing the Peclet numbers [Pe_A, Pe_B, Pe_C, Pe_T]
+    Pe = [0,0,0,0,0]
     
-    return velocity_current
- 
+    Pe[0] = (velocity_current * L_reactor)/D_f[0]
+    Pe[1] = (velocity_current * L_reactor)/D_f[1]
+    Pe[2] = (velocity_current * L_reactor)/D_f[2]
+    Pe[3] = (velocity_current * L_reactor)/D_f[3]
+    Pe[4] = (velocity_current * L_reactor)/k_f
+    
+    return velocity_current, Pe
+    
 if __name__ == '__main__':
     main()
