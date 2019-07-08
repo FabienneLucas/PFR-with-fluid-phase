@@ -199,11 +199,11 @@ def generate_matrix_concentration(L_reactor, velocity_inlet, spacesteps, delta_t
         velocity_current = velocity(velocity_inlet, L_reactor, conc_A_current[i], conc_B_current[i], conc_C_current[i], conc_N_current[i], T_current[i], ingoing, D_f, k_f)
         # Combining the variables
         alpha = -(delta_t*D_f[situation])/(step**2)
-        beta = (velocity_current*delta_t)/(2.0*step)
+        beta = (velocity_current*delta_t)/(step)
         # Generating the matrix
         matrix[i,i-1] = alpha - beta
-        matrix[i,i+1] = alpha + beta
-        matrix[i,i] = 1.0 - 2.0*alpha
+        matrix[i,i+1] = alpha 
+        matrix[i,i] = 1.0 - 2.0*alpha + beta 
         
     # Boundary conditions
     matrix[0,0] = 1.0
@@ -235,11 +235,11 @@ def generate_matrix_temperature(L_reactor, velocity_inlet, spacesteps, delta_t, 
         velocity_current = velocity(velocity_inlet, L_reactor, conc_A_current[i], conc_B_current[i], conc_C_current[i], conc_N_current[i], T_current[i], ingoing, D_f, k_f)
         # Combining the variables
         alpha = -(delta_t * k_f)/(rho_Cp_T[i]*step**2)
-        beta = (velocity_current*delta_t)/(2.0*step) 
+        beta = (velocity_current*delta_t)/(step) 
         # Generating the matrix
         matrix[i,i-1] = alpha - beta
-        matrix[i,i+1] = alpha + beta
-        matrix[i,i] = (1 - 2*alpha)
+        matrix[i,i+1] = alpha
+        matrix[i,i] = (1 - 2*alpha + beta)
         
     # Boundary conditions
     matrix[0,0] = 1.0
